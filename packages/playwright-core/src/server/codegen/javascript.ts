@@ -18,6 +18,7 @@ import { sanitizeDeviceOptions, toClickOptionsForSourceCode, toKeyboardModifiers
 import { asLocator, escapeWithQuotes } from '../../utils';
 import { deviceDescriptors } from '../deviceDescriptors';
 
+import { MouseClickOptions } from '../types';
 import type { Language, LanguageGenerator, LanguageGeneratorOptions } from './types';
 import type { BrowserContextOptions } from '../../../types/types';
 import type * as actions from '@recorder/actions';
@@ -106,6 +107,20 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
         const shortcut = [...modifiers, action.key].join('+');
         return `await ${subject}.${this._asLocator(action.selector)}.press(${quote(shortcut)});`;
       }
+      case 'move':
+        const options: MouseClickOptions = action.button !== 'left' ? { button: action.button } : {};
+        const modifiers = toKeyboardModifiers(action.modifiers);
+        const hoverOptionsString = formatOptions({
+          position: { x: action.hover.x, y: action.hover.y },
+          ...(modifiers.length ? { modifiers } : {})
+        }, false);
+        const buttonOptionsString = formatOptions(options, false);
+        return [
+          `await ${subject}.${this._asLocator(action.selector)}.hover(${hoverOptionsString});`,
+          `await ${subject}.mouse.down(${buttonOptionsString});`,
+          `await ${subject}.mouse.move(${action.up.x}, ${action.up.y}, { steps: ${action.steps} });`,
+          `await ${subject}.mouse.up(${buttonOptionsString});`
+        ].join('\n');
       case 'navigate':
         return `await ${subject}.goto(${quote(action.url)});`;
       case 'select':

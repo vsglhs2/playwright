@@ -115,6 +115,8 @@ export class PythonLanguageGenerator implements LanguageGenerator {
         const shortcut = [...modifiers, action.key].join('+');
         return `${subject}.${this._asLocator(action.selector)}.press(${quote(shortcut)})`;
       }
+      case 'move':
+        return [].join('\n');
       case 'navigate':
         return `${subject}.goto(${quote(action.url)})`;
       case 'select':

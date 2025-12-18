@@ -53,6 +53,7 @@ interface RecorderTool {
   onKeyDown?(event: KeyboardEvent): void;
   onKeyUp?(event: KeyboardEvent): void;
   onPointerDown?(event: PointerEvent): void;
+  onPointerMove?(event: PointerEvent): void;
   onPointerUp?(event: PointerEvent): void;
   onMouseDown?(event: MouseEvent): void;
   onMouseUp?(event: MouseEvent): void;
@@ -195,6 +196,16 @@ class RecordActionTool implements RecorderTool {
   private _pendingClickAction: { action: actions.ClickAction, timeout: number } | undefined;
   private _observer: MutationObserver | null = null;
   private _dialog: Dialog;
+  private _down?: {
+    x: number;
+    y: number;
+    hover: {
+      x: number;
+      y: number;
+      selector: string;
+    }
+  };
+  private _moveSteps = 0;
 
   constructor(recorder: Recorder) {
     this._recorder = recorder;
@@ -345,14 +356,47 @@ class RecordActionTool implements RecorderTool {
   }
 
   onPointerDown(event: PointerEvent) {
+    this._moveSteps = 0;
+    if (this._hoveredModel && (event.target as HTMLElement).nodeName === 'CANVAS') {
+      this._down = {
+        x: event.x,
+        y: event.y,
+        hover: {
+          x: event.offsetX,
+          y: event.offsetY,
+          selector: this._hoveredModel.selector
+        }
+      };
+    }
+
     if (this._dialog.isShowing())
       return;
     if (this._shouldIgnoreMouseEvent(event))
       return;
+    if (this._down)
+      return;
+
     this._consumeWhenAboutToPerform(event);
   }
 
+  onPointerMove(event: PointerEvent): void {
+    this._moveSteps++;
+  }
+
   onPointerUp(event: PointerEvent) {
+    this._down && this._moveSteps && this._performAction({
+      name: 'move',
+      selector: this._down.hover.selector,
+      hover: { x: Math.round(this._down.hover.x), y: Math.round(this._down.hover.y) },
+      down: { x: Math.round(this._down.x), y: Math.round(this._down.y) },
+      up: { x: Math.round(event.clientX), y: Math.round(event.clientY) },
+      steps: this._moveSteps,
+      signals: [],
+      button: buttonForEvent(event),
+      modifiers: modifiersForEvent(event),
+    });
+    delete this._down;
+
     if (this._dialog.isShowing())
       return;
     if (this._shouldIgnoreMouseEvent(event))
@@ -361,15 +405,44 @@ class RecordActionTool implements RecorderTool {
   }
 
   onMouseDown(event: MouseEvent) {
+    this._moveSteps = 0;
+    if (this._hoveredModel && (event.target as HTMLElement).nodeName === 'CANVAS') {
+      this._down = {
+        x: event.x,
+        y: event.y,
+        hover: {
+          x: event.offsetX,
+          y: event.offsetY,
+          selector: this._hoveredModel.selector
+        }
+      };
+    }
+
     if (this._dialog.isShowing())
       return;
     if (this._shouldIgnoreMouseEvent(event))
       return;
+    if (this._down)
+      return;
+
     this._consumeWhenAboutToPerform(event);
     this._activeModel = this._hoveredModel;
   }
 
   onMouseUp(event: MouseEvent) {
+    this._down && this._moveSteps && this._performAction({
+      name: 'move',
+      selector: this._down.hover.selector,
+      hover: { x: Math.round(this._down.hover.x), y: Math.round(this._down.hover.y) },
+      down: { x: Math.round(this._down.x), y: Math.round(this._down.y) },
+      up: { x: Math.round(event.clientX), y: Math.round(event.clientY) },
+      steps: this._moveSteps,
+      signals: [],
+      button: buttonForEvent(event),
+      modifiers: modifiersForEvent(event),
+    });
+    delete this._down;
+
     if (this._dialog.isShowing())
       return;
     if (this._shouldIgnoreMouseEvent(event))
@@ -378,6 +451,8 @@ class RecordActionTool implements RecorderTool {
   }
 
   onMouseMove(event: MouseEvent) {
+    this._moveSteps++;
+
     if (this._dialog.isShowing())
       return;
     const target = this._recorder.deepEventTarget(event);
@@ -628,7 +703,7 @@ class RecordActionTool implements RecorderTool {
     for (const action of this._performingActions) {
       if (isKeyEvent && action.name === 'press' && event.key === action.key)
         return true;
-      if (isMouseOrPointerEvent && (action.name === 'click' || action.name === 'hover' || action.name === 'check' || action.name === 'uncheck'))
+      if (isMouseOrPointerEvent && (action.name === 'click' || action.name === 'hover' || action.name === 'check' || action.name === 'uncheck' || action.name === 'move'))
         return true;
     }
 
@@ -1432,6 +1507,7 @@ export class Recorder {
       addEventListener(this.document, 'keydown', event => this._onKeyDown(event as KeyboardEvent), true),
       addEventListener(this.document, 'keyup', event => this._onKeyUp(event as KeyboardEvent), true),
       addEventListener(this.document, 'pointerdown', event => this._onPointerDown(event as PointerEvent), true),
+      addEventListener(this.document, 'pointermove', event => this._onPointerMove(event as PointerEvent), true),
       addEventListener(this.document, 'pointerup', event => this._onPointerUp(event as PointerEvent), true),
       addEventListener(this.document, 'mousedown', event => this._onMouseDown(event as MouseEvent), true),
       addEventListener(this.document, 'mouseup', event => this._onMouseUp(event as MouseEvent), true),
@@ -1565,6 +1641,14 @@ export class Recorder {
     if (this._ignoreOverlayEvent(event))
       return;
     this._currentTool.onPointerDown?.(event);
+  }
+
+  private _onPointerMove(event: PointerEvent) {
+    if (!event.isTrusted)
+      return;
+    if (this._ignoreOverlayEvent(event))
+      return;
+    this._currentTool.onPointerMove?.(event);
   }
 
   private _onPointerUp(event: PointerEvent) {

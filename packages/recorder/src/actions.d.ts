@@ -22,6 +22,7 @@ export type ActionName =
   'hover' |
   'closePage' |
   'fill' |
+  'move' |
   'navigate' |
   'openPage' |
   'press' |
@@ -70,6 +71,16 @@ export type UncheckAction = ActionWithSelector & {
 export type FillAction = ActionWithSelector & {
   name: 'fill',
   text: string,
+};
+
+export type MoveAction = ActionWithSelector & {
+  name: 'move';
+  button: 'left' | 'middle' | 'right';
+  modifiers: number;
+  hover: Point;
+  down: Point;
+  up: Point;
+  steps: number;
 };
 
 export type NavigateAction = ActionBase & {
@@ -127,9 +138,9 @@ export type AssertSnapshotAction = ActionWithSelector & {
   ariaSnapshot: string,
 };
 
-export type Action = ClickAction | HoverAction | CheckAction | ClosesPageAction | OpenPageAction | UncheckAction | FillAction | NavigateAction | PressAction | SelectAction | SetInputFilesAction | AssertTextAction | AssertValueAction | AssertCheckedAction | AssertVisibleAction | AssertSnapshotAction;
+export type Action = ClickAction | HoverAction | CheckAction | ClosesPageAction | OpenPageAction | UncheckAction | FillAction | MoveAction | NavigateAction | PressAction | SelectAction | SetInputFilesAction | AssertTextAction | AssertValueAction | AssertCheckedAction | AssertVisibleAction | AssertSnapshotAction;
 export type AssertAction = AssertCheckedAction | AssertValueAction | AssertTextAction | AssertVisibleAction | AssertSnapshotAction;
-export type PerformOnRecordAction = ClickAction | HoverAction | CheckAction | UncheckAction | PressAction | SelectAction;
+export type PerformOnRecordAction = ClickAction | HoverAction | MoveAction | CheckAction | UncheckAction | PressAction | SelectAction;
 
 // Signals.
 

@@ -146,6 +146,8 @@ export class CSharpLanguageGenerator implements LanguageGenerator {
         const shortcut = [...modifiers, action.key].join('+');
         return `await ${subject}.${this._asLocator(action.selector)}.PressAsync(${quote(shortcut)});`;
       }
+      case 'move':
+        return [].join('\n');
       case 'navigate':
         return `await ${subject}.GotoAsync(${quote(action.url)});`;
       case 'select':

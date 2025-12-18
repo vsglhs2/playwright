@@ -124,6 +124,8 @@ export class JavaLanguageGenerator implements LanguageGenerator {
         const shortcut = [...modifiers, action.key].join('+');
         return `${subject}.${this._asLocator(action.selector, inFrameLocator)}.press(${quote(shortcut)});`;
       }
+      case 'move':
+        return [].join('\n');
       case 'navigate':
         return `${subject}.navigate(${quote(action.url)});`;
       case 'select':

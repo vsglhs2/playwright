@@ -28,8 +28,5 @@
   "bin": {
     "playwright": "cli.js"
   },
-  "scripts": {},
-  "dependencies": {
-    "playwright": "1.57.0"
-  }
+  "scripts": {}
 }
