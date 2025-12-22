@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import fs from 'fs';
+import path from 'path';
 import { sanitizeDeviceOptions, toClickOptionsForSourceCode, toKeyboardModifiers, toSignalMap } from './language';
 import { asLocator, escapeWithQuotes } from '../../utils';
 import { deviceDescriptors } from '../deviceDescriptors';
@@ -23,17 +25,49 @@ import type { Language, LanguageGenerator, LanguageGeneratorOptions } from './ty
 import type { BrowserContextOptions } from '../../../types/types';
 import type * as actions from '@recorder/actions';
 
+const templateMarker = '// <% TEMPLATE_CODE_GOES_HERE %>';
+const generateFromMarker = 'GENERATE_FROM';
+
+function parseGenerateFromFile(generateFrom: string) {
+  const resolvedPath = path.resolve(__dirname, generateFrom);
+
+  if (!fs.existsSync(resolvedPath))
+    throw new Error(`File ${resolvedPath} from GENERATE_FROM does not exist`);
+
+  const text = fs.readFileSync(resolvedPath, { encoding: 'utf-8' });
+  const [header, footer] = text.split(templateMarker);
+
+  return {
+    header,
+    footer,
+    isTemplate: text.includes(templateMarker),
+  };
+}
+
 export class JavaScriptLanguageGenerator implements LanguageGenerator {
   id: string;
   groupName = 'Node.js';
   name: string;
   highlighter = 'javascript' as Language;
   private _isTest: boolean;
+  private _parsedGenerateFrom: {
+    header: string;
+    footer: string;
+    isTemplate: boolean;
+  } | null;
+
+  public get isTemplate() {
+    return Boolean(this._parsedGenerateFrom?.isTemplate);
+  }
 
   constructor(isTest: boolean) {
     this.id = isTest ? 'playwright-test' : 'javascript';
     this.name = isTest ? 'Test Runner' : 'Library';
     this._isTest = isTest;
+
+    this._parsedGenerateFrom = process.env[generateFromMarker] ? (
+      parseGenerateFromFile(process.env[generateFromMarker])
+    ) : null;
   }
 
   generateAction(actionInContext: actions.ActionInContext): string {
@@ -160,20 +194,34 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
 
   generateTestHeader(options: LanguageGeneratorOptions): string {
     const formatter = new JavaScriptFormatter();
-    const useText = formatContextOptions(options.contextOptions, options.deviceName, this._isTest);
-    formatter.add(`
-      import { test, expect${options.deviceName ? ', devices' : ''} } from '@playwright/test';
-${useText ? '\ntest.use(' + useText + ');\n' : ''}
-      test('test', async ({ page }) => {`);
-    if (options.contextOptions.recordHar) {
-      const url = options.contextOptions.recordHar.urlFilter;
-      formatter.add(`  await page.routeFromHAR(${quote(options.contextOptions.recordHar.path)}${url ? `, ${formatOptions({ url }, false)}` : ''});`);
+
+    if (this._parsedGenerateFrom) {
+      formatter.add(this._parsedGenerateFrom.header);
+    } else {
+      const useText = formatContextOptions(options.contextOptions, options.deviceName, this._isTest);
+      formatter.add(`
+        import { test, expect${options.deviceName ? ', devices' : ''} } from '@playwright/test';
+  ${useText ? '\ntest.use(' + useText + ');\n' : ''}
+        test('test', async ({ page }) => {`);
+      if (options.contextOptions.recordHar) {
+        const url = options.contextOptions.recordHar.urlFilter;
+        formatter.add(`  await page.routeFromHAR(${quote(options.contextOptions.recordHar.path)}${url ? `, ${formatOptions({ url }, false)}` : ''});`);
+      }
     }
+
     return formatter.format();
   }
 
   generateTestFooter(saveStorage: string | undefined): string {
-    return `});`;
+    const formatter = new JavaScriptFormatter();
+
+    if (this._parsedGenerateFrom)
+      return this._parsedGenerateFrom.footer;
+    else
+      formatter.add(`});`);
+
+
+    return formatter.format();
   }
 
   generateStandaloneHeader(options: LanguageGeneratorOptions): string {

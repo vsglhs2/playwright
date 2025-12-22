@@ -29,6 +29,7 @@ import { generateCode } from '../codegen/language';
 import { Recorder, RecorderEvent } from '../recorder';
 import { BrowserContext } from '../browserContext';
 
+import { JavaScriptLanguageGenerator } from '../codegen/javascript';
 import type { Page } from '../page';
 import type * as actions from '@recorder/actions';
 import type { CallLog, ElementInfo, Mode, Source } from '@recorder/recorderTypes';
@@ -268,6 +269,28 @@ export class RecorderApp {
     recorder.on(RecorderEvent.CallLogsUpdated, (callLogs: CallLog[]) => {
       this._onCallLogsUpdated(callLogs);
     });
+
+    const generateFromMarker = 'GENERATE_FROM';
+    const generateFrom = process.env[generateFromMarker];
+
+    if (generateFrom) {
+      recorder.on(RecorderEvent.ContextClosed, () => {
+        const languageGenerator = new JavaScriptLanguageGenerator(true);
+        if (!languageGenerator.isTemplate)
+          return;
+
+        const aa = collapseActions(this._actions);
+        const { text } = generateCode(aa, languageGenerator, {
+          browserName: 'chromium',
+          launchOptions: {},
+          contextOptions: {},
+          generateAutoExpect: true,
+        });
+
+        const resolvedPath = path.resolve(__dirname, generateFrom);
+        fs.writeFileSync(resolvedPath, text, { encoding: 'utf-8' });
+      });
+    }
   }
 
   private _onActionAdded(action: actions.ActionInContext) {
