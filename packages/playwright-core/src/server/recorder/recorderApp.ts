@@ -296,7 +296,7 @@ export class RecorderApp {
         const aa = collapseActions(this._actions);
         const header = languageGenerator.generateHeader(options);
         const footer = languageGenerator.generateFooter(options.saveStorage);
-        const actionTexts = aa.map(a => generateActionText(languageGenerator, a, !!options.generateAutoExpect)).filter(Boolean) as string[];
+        const actionTexts = aa.map(a => generateActionText(languageGenerator, a, false)).filter(Boolean) as string[];
         const text = [header, ...actionTexts, templateMarker, footer].join('\n');
 
         const resolvedPath = path.resolve(__dirname, generateFrom);

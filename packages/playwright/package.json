@@ -63,7 +63,7 @@
     "name": "Microsoft Corporation"
   },
   "license": "Apache-2.0",
-  "dependencies": {
+  "peerDependencies": {
     "playwright-core": "1.57.0"
   },
   "optionalDependencies": {
