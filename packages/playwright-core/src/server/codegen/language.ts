@@ -27,7 +27,7 @@ export function generateCode(actions: actions.ActionInContext[], languageGenerat
   return { header, footer, actionTexts, text };
 }
 
-function generateActionText(generator: LanguageGenerator, action: actions.ActionInContext, generateAutoExpect: boolean): string | undefined {
+export function generateActionText(generator: LanguageGenerator, action: actions.ActionInContext, generateAutoExpect: boolean): string | undefined {
   let text = generator.generateAction(action);
   if (!text)
     return;

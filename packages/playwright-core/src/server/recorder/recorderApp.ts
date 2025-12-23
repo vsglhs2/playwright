@@ -25,7 +25,7 @@ import { ProgressController } from '../progress';
 import { ThrottledFile } from './throttledFile';
 import { languageSet } from '../codegen/languages';
 import { collapseActions, shouldMergeAction } from './recorderUtils';
-import { generateCode } from '../codegen/language';
+import { generateCode, generateActionText } from '../codegen/language';
 import { Recorder, RecorderEvent } from '../recorder';
 import { BrowserContext } from '../browserContext';
 
@@ -55,8 +55,10 @@ export class RecorderApp {
   private _recorderSources: Source[] = [];
   private _primaryGeneratorId: string;
   private _selectedGeneratorId: string;
+  private _generated: boolean;
 
   private constructor(recorder: Recorder, params: RecorderAppParams, page: Page, wsEndpointForTest: string | undefined) {
+    this._generated = false;
     this._page = page;
     this._recorder = recorder;
     this.wsEndpointForTest = wsEndpointForTest;
@@ -270,25 +272,37 @@ export class RecorderApp {
       this._onCallLogsUpdated(callLogs);
     });
 
+    const templateMarker = '// <% TEMPLATE_CODE_GOES_HERE %>';
     const generateFromMarker = 'GENERATE_FROM';
     const generateFrom = process.env[generateFromMarker];
 
     if (generateFrom) {
       recorder.on(RecorderEvent.ContextClosed, () => {
+        if (this._generated)
+          return;
+
         const languageGenerator = new JavaScriptLanguageGenerator(true);
         if (!languageGenerator.isTemplate)
           return;
 
-        const aa = collapseActions(this._actions);
-        const { text } = generateCode(aa, languageGenerator, {
+        const options = {
           browserName: 'chromium',
           launchOptions: {},
           contextOptions: {},
-          generateAutoExpect: true,
-        });
+          generateAutoExpect: false,
+          saveStorage: undefined,
+        };
+
+        const aa = collapseActions(this._actions);
+        const header = languageGenerator.generateHeader(options);
+        const footer = languageGenerator.generateFooter(options.saveStorage);
+        const actionTexts = aa.map(a => generateActionText(languageGenerator, a, !!options.generateAutoExpect)).filter(Boolean) as string[];
+        const text = [header, ...actionTexts, templateMarker, footer].join('\n');
 
         const resolvedPath = path.resolve(__dirname, generateFrom);
         fs.writeFileSync(resolvedPath, text, { encoding: 'utf-8' });
+
+        this._generated = true;
       });
     }
   }
