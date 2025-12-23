@@ -64,7 +64,7 @@
   },
   "license": "Apache-2.0",
   "peerDependencies": {
-    "playwright-core": "1.57.0"
+    "playwright-core": "file:../playwright-core"
   },
   "optionalDependencies": {
     "fsevents": "2.3.2"
