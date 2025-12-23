@@ -63,8 +63,8 @@
     "name": "Microsoft Corporation"
   },
   "license": "Apache-2.0",
-  "peerDependencies": {
-    "playwright-core": "file:../playwright-core"
+  "dependencies": {
+    "playwright-core": "1.57.0"
   },
   "optionalDependencies": {
     "fsevents": "2.3.2"
